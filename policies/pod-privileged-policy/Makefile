@@ -1,7 +1,7 @@
 SOURCE_FILES := $(shell test -e src/ && find src -type f)
 
 policy.wasm: $(SOURCE_FILES) Cargo.*
-	cargo build --target=wasm32-wasip1 --release
+	cargo build --target=wasm32-wasip1 --target-dir=target --release
 	cp target/wasm32-wasip1/release/*.wasm policy.wasm
 
 
