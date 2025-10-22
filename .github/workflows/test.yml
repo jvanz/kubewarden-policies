@@ -1,0 +1,109 @@
+on: [push, pull_request, workflow_dispatch]
+name: Continuous integration
+jobs:
+  dump_contexts_to_log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+      - name: Dump strategy context
+        env:
+          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+        run: echo "$STRATEGY_CONTEXT"
+      - name: Dump matrix context
+        env:
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        run: echo "$MATRIX_CONTEXT"
+  # version-check:
+  #   name: Check Cargo.toml version
+  #   if: github.ref_type == 'tag'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download source code
+  #       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Check cargo file version
+  #       run: |
+  #         CARGO_VERSION=$(sed  -n 's,^version = \"\(.*\)\",\1,p' Cargo.toml)
+  #         TAG_VERSION=$(echo ${{ github.ref_name }} | sed 's/v//')
+  #         if [ "$CARGO_VERSION" != "$TAG_VERSION" ];then
+  #             echo "::error title=Invalid Cargo.toml version::Cargo.toml version does not match the tag version"
+  #             exit 1
+  #         fi
+  # check:
+  #   name: Cargo check
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Setup rust toolchain
+  #       run: |
+  #         rustup toolchain install stable  --profile minimal --target wasm32-wasip1
+  #         rustup override set stable
+  #       shell: bash
+  #     - name: Run Cargo check
+  #       run: cargo check --workspace
+  #       shell: bash
+  # test:
+  #   name: Test Suite
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Setup rust toolchain
+  #       run: |
+  #         rustup toolchain install stable  --profile minimal --target wasm32-wasip1
+  #         rustup override set stable
+  #       shell: bash
+  #     - name: Run Cargo test
+  #       run: cargo test --workspace
+  #       shell: bash
+  # e2e-tests:
+  #   name: E2E testSuite
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Install dependencies
+  #       uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.12
+  #     - name: Build and annotate policy
+  #       with:
+  #         generate-sbom: false
+  #       uses: kubewarden/github-actions/policy-build-rust@v4.5.12
+  #     - name: Run e2e tests
+  #       run: |
+  #         make e2e-tests
+  # fmt:
+  #   name: Rustfmt
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Setup rust toolchain
+  #       run: |
+  #         rustup toolchain install stable  --profile minimal --target wasm32-wasip1 --component rustfmt
+  #         rustup override set stable
+  #       shell: bash
+  #     - name: Run cargo fmt
+  #       run: cargo fmt --all -- --check
+  #       shell: bash
+  # clippy:
+  #   name: Clippy
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #     - name: Setup rust toolchain
+  #       run: |
+  #         rustup toolchain install stable  --profile minimal --target wasm32-wasip1 --component clippy
+  #         rustup override set stable
+  #     - name: Run Cargo clippy
+  #       run: cargo clippy --workspace -- -D warnings
