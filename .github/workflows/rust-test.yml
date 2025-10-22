@@ -1,4 +1,5 @@
 # Run continuous integration on any rust policy change
+name: Continuous integration
 on:
   push:
     paths:
@@ -9,11 +10,9 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
   workflow_dispatch:
-name: Continuous integration
 defaults:
   run:
     shell: bash
-    working-directory: ./policies
 
 jobs:
   dump_contexts_to_log:
@@ -43,76 +42,36 @@ jobs:
         env:
           MATRIX_CONTEXT: ${{ toJson(matrix) }}
         run: echo "$MATRIX_CONTEXT"
-  # version-check:
-  #   name: Check Cargo.toml version
-  #   if: github.ref_type == 'tag'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Download source code
-  #       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #     - name: Check cargo file version
-  #       run: |
-  #         CARGO_VERSION=$(sed  -n 's,^version = \"\(.*\)\",\1,p' Cargo.toml)
-  #         TAG_VERSION=$(echo ${{ github.ref_name }} | sed 's/v//')
-  #         if [ "$CARGO_VERSION" != "$TAG_VERSION" ];then
-  #             echo "::error title=Invalid Cargo.toml version::Cargo.toml version does not match the tag version"
-  #             exit 1
-  #         fi
-  check:
-    name: Cargo check
+  calculate-policy-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      policy-working-dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-      - name: Run Cargo check
-        run: cargo check --workspace
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-      - name: Run Cargo test
-        run: cargo test --workspace
-  e2e-tests:
-    name: E2E testSuite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Install dependencies
-        uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.12
-      - name: Build and annotate policy
         with:
-          generate-sbom: false
-        uses: kubewarden/github-actions/policy-build-rust@v4.5.12
-      - name: Run e2e tests
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
+        shell: bash
         run: |
-          make e2e-tests
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1 --component rustfmt
-          rustup override set stable
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1 --component clippy
-          rustup override set stable
-      - name: Run Cargo clippy
-        run: cargo clippy --workspace -- -D warnings
+          # policy_working_dirs must be a string on the form of '[ "policies/Foo", "policies/Bar" ]' or '[]'
+           
+          # list only changes of files in `policies/`:
+          pushd policies
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/main ${{ github.sha }} -- .)"
+
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${dir_bash_array[@]}")
+          echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+
+  continuous-integration:
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    needs: calculate-policy-matrix
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy-working-dirs) }}
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
+    with:
+      policy-working-dir: ${{ matrix.policy-working-dir }}
