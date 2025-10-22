@@ -1,0 +1,85 @@
+on:
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      policy-dir:
+        description: "working directory under policies folder"
+        required: true
+        type: string
+
+name: Tag and Release on PR Merge
+
+jobs:
+  dump_contexts_to_log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+      - name: Dump strategy context
+        env:
+          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+        run: echo "$STRATEGY_CONTEXT"
+      - name: Dump matrix context
+        env:
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        run: echo "$MATRIX_CONTEXT"
+
+  calculate-policy-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      policy_rust_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_rust_working_dirs }}
+      policy_go_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_go_working_dirs }}
+      global_cargo_file_change: ${{ steps.calculate-policy-dirs.outputs.global_cargo_file_change }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
+        shell: bash
+        run: |
+          git remote -v
+          # list only changes of files in `policies/`:
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/${{ github.event.base.sha }} ${{ github.sha }} -- policies)"
+
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml"))' --args -- "${dir_bash_array[@]}")
+          # echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+          policy_rust_working_dirs=()
+          policy_go_working_dirs=()
+          for policy in $(echo "$policy_working_dirs" | jq -r '.[]'); do
+              # check if policy directory has cargo.toml file
+              if [ -f "$policy/Cargo.toml" ]; then
+                  policy_rust_working_dirs+=("$policy")
+              else
+                  policy_go_working_dirs+=("$policy")
+              fi
+          done
+          policy_rust_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_rust_working_dirs[@]}")
+          policy_go_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_go_working_dirs[@]}")
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs"
+          echo "policy_go_working_dirs=$policy_go_working_dirs"
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs" >> $GITHUB_OUTPUT
+          echo "policy_go_working_dirs=$policy_go_working_dirs" >> $GITHUB_OUTPUT
+
+  # release-tag:
+  #   name: release-tag
+  #   uses: jvanz/github-actions/.github/workflows/reusable-release-tag.yml@monorepo

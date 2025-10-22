@@ -1,6 +1,6 @@
 rules:
   - apiGroups:
-      - ''
+      - ""
     apiVersions:
       - v1
     resources:
@@ -9,7 +9,7 @@ rules:
       - CREATE
       - UPDATE
   - apiGroups:
-      - ''
+      - ""
     apiVersions:
       - v1
     resources:
