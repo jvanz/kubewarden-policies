@@ -60,7 +60,7 @@ jobs:
       policy-working-dir: ${{ matrix.policy-working-dir }}
 
   go-policy-continuous-integration:
-    runs-on: ubuntu-latest
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
     if: ${{ needs.calculate-policy-matrix.outputs.policy_go_working_dirs != '[]' }}
     needs: calculate-policy-matrix
     strategy:
