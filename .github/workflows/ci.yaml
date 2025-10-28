@@ -48,6 +48,8 @@ jobs:
           done
           policy_rust_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_rust_working_dirs[@]}")
           policy_go_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_go_working_dirs[@]}")
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs"
+          echo "policy_go_working_dirs=$policy_go_working_dirs"
           echo "policy_rust_working_dirs=$policy_rust_working_dirs" >> $GITHUB_OUTPUT
           echo "policy_go_working_dirs=$policy_go_working_dirs" >> $GITHUB_OUTPUT
 
