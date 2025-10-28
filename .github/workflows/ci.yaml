@@ -52,7 +52,7 @@ jobs:
 
   rust-policy-continuous-integration:
     uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
-    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    if: ${{ needs.calculate-policy-matrix.outputs.policy_rust_working_dirs != '[]' }}
     needs: calculate-policy-matrix
     strategy:
       matrix:
@@ -62,7 +62,7 @@ jobs:
 
   go-policy-continuous-integration:
     runs-on: ubuntu-latest
-    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    if: ${{ needs.calculate-policy-matrix.outputs.policy_go_working_dirs != '[]' }}
     needs: calculate-policy-matrix
     strategy:
       matrix:
