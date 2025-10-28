@@ -34,14 +34,37 @@ jobs:
           dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
           declare -p dir_bash_array # for debug
           policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml"))' --args -- "${dir_bash_array[@]}")
-          echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+          # echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+          policy_rust_working_dirs=()
+          policy_go_working_dirs=()
+          for policy in $(echo "$policy_working_dirs" | jq -r '.[]'); do
+              # check if policy directory has cargo.toml file
+              if [ -f "$policy/Cargo.toml" ]; then
+                  policy_rust_working_dirs+=("$policy")
+              else
+                  policy_go_working_dirs+=("$policy")
+              fi
+          done
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs" >> $GITHUB_OUTPUT
+          echo "policy_go_working_dirs=$policy_go_working_dirs" >> $GITHUB_OUTPUT
 
-  continuous-integration:
+  rust-policy-continuous-integration:
     uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
     if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
     needs: calculate-policy-matrix
     strategy:
       matrix:
-        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy-working-dirs) }}
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_rust_working_dirs) }}
     with:
       policy-working-dir: ${{ matrix.policy-working-dir }}
+
+  go-policy-continuous-integration:
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    needs: calculate-policy-matrix
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_go_working_dirs) }}
+    steps:
+      - name: Testing step
+        shell: bash
+        run: echo "Testing step"
