@@ -1,9 +1,6 @@
 # Run continuous integration on any rust policy change
 name: Continuous integration
 on:
-  push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
 
@@ -27,17 +24,12 @@ jobs:
         shell: bash
         run: |
           # list only changes of files in `policies/`:
-          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/main ${{ github.sha }} -- policies)"
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only ${{ github.base_ref }} ${{ github.sha }} -- policies)"
 
           # build policy_working_dirs:
           dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
           declare -p dir_bash_array # for debug
           policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml"))' --args -- "${dir_bash_array[@]}")
-          # flag with policies/Cargo.* file change
-          global_cargo_file_change=false
-          if [[ "$git_files" == *"policies/Cargo.toml"* || "$git_files" == *"policies/Cargo.lock"* ]]; then
-              global_cargo_file_change=true
-          fi
           # echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
           policy_rust_working_dirs=()
           policy_go_working_dirs=()
@@ -53,10 +45,8 @@ jobs:
           policy_go_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_go_working_dirs[@]}")
           echo "policy_rust_working_dirs=$policy_rust_working_dirs"
           echo "policy_go_working_dirs=$policy_go_working_dirs"
-          echo "global_cargo_file_change=$global_cargo_file_change" 
           echo "policy_rust_working_dirs=$policy_rust_working_dirs" >> $GITHUB_OUTPUT
           echo "policy_go_working_dirs=$policy_go_working_dirs" >> $GITHUB_OUTPUT
-          echo "global_cargo_file_change=$global_cargo_file_change" >> $GITHUB_OUTPUT
 
   rust-policy-continuous-integration:
     uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
@@ -67,20 +57,6 @@ jobs:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_rust_working_dirs) }}
     with:
       policy-working-dir: ${{ matrix.policy-working-dir }}
-
-  build-all-rust-policies:
-    if: ${{ needs.calculate-policy-matrix.outputs.policy_rust_working_dirs == '[]' && needs.calculate-policy-matrix.outputs.global_cargo_file_change == 'true' }}
-    needs: calculate-policy-matrix
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 0 # checkout all history to do git diff
-      - name: Build all policies
-        shell: bash
-        run: |
-          pushd policies
-          cargo build --all --workspace
 
   go-policy-continuous-integration:
     runs-on: ubuntu-latest
