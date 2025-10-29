@@ -62,18 +62,18 @@ jobs:
           echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
 
   rust-policy-continuous-integration:
+    name: run unit tests and linters for Rust
     needs: calculate-policy-from-tag
-    name: run unit tests and linters
+    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'rust' }}
     uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
-    if: ${{ needs.calculate-policy-from-tag.outputs.policy_language == 'rust' }}
     with:
       policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
 
   go-policy-continuous-integration:
     needs: calculate-policy-from-tag
-    name: run unit tests and linters
+    name: run unit tests and linters for Go
     uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
-    if: ${{ needs.calculate-policy-from-tag.outputs.policy_language == 'go' }}
+    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'go' }}
     with:
       policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
 
