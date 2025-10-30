@@ -1,0 +1,15 @@
+---
+# Values.yaml contains settings that be used from Updatecli manifest.
+
+# pipelineid: release_pr # branch will be named: updatecli_main_release_pr
+
+policy:
+  version: "11.0.0"
+  working_dir: "policies/pod-privileged-policy"
+  rust_package: "pod-privileged-policy"
+
+## github contains the scm settings that can be overriden
+github:
+  owner: "jvanz"
+  repo: "kubewarden-policies"
+  token: "UPDATECLI_GITHUB_TOKEN"
