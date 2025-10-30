@@ -35,7 +35,7 @@ jobs:
           fi
 
           # check policy version format. Should follow semver: vX.X.X-rc1
-          VERSION_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$'
+          VERSION_REGEX='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$'
           if ! [[ "${{ inputs.policy-version }}" =~ $VERSION_REGEX ]]; then
             echo "${{ inputs.policy-version }} is invalid"
             exit 1;
