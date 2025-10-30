@@ -12,4 +12,3 @@ policy:
 github:
   owner: "jvanz"
   repo: "kubewarden-policies"
-  token: "UPDATECLI_GITHUB_TOKEN"
