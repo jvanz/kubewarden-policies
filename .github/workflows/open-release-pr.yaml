@@ -47,8 +47,6 @@ jobs:
     needs: check-inputs
     outputs:
       policy-working-dir: ${{ steps.calculate-vars.outputs.policy_working_dir }}
-      # policy-version: ${{ steps.calculate-vars.outputs.policy_version }}
-      policy-id: ${{ steps.calculate-vars.outputs.policy_id }}
       policy-language: ${{ steps.calculate-vars.outputs.policy_language }}
       policy-rust-package: ${{ steps.calculate-vars.outputs.policy_rust_package }}
     steps:
@@ -62,8 +60,6 @@ jobs:
         shell: bash
         run: |
           policy_working_dir="policies/${{ inputs.policy-dir }}"
-          policy_ociUrl=$(yq -r '.annotations."io.kubewarden.policy.ociUrl"' $policy_working_dir/metadata.yml)
-          policy_id=${policy_ociUrl##*/}
           policy_language=""
           policy_rust_package=""
 
@@ -74,7 +70,7 @@ jobs:
 
           if [ -f "$policy_working_dir/Cargo.toml" ]; then
             policy_language="rust"
-            policy_rust_package=$(sed  -n 's,^version = \"\(.*\)\",\1,p' "$policy_working_dir/Cargo.toml")
+            policy_rust_package=$(sed  -n 's,^name = \"\(.*\)\",\1,p' "$policy_working_dir/Cargo.toml")
             if [ "$policy_rust_package" == "" ]; then
               echo "cannot get rust policy $policy_working_dir package name";
               exit 1;
@@ -89,15 +85,11 @@ jobs:
             exit 1;
           fi
 
-          echo "policy_id=$policy_id"
           echo "policy_working_dir=$policy_working_dir"
-          # echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )"
           echo "policy_language=$policy_language"
           echo "policy_rust_package=$policy_rust_package"
 
-          echo "policy_id=$policy_id" >> $GITHUB_OUTPUT
           echo "policy_working_dir=$policy_working_dir" >> $GITHUB_OUTPUT
-          # echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )" >> $GITHUB_OUTPUT
           echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
           echo "policy_rust_package=$policy_rust_package" >> $GITHUB_OUTPUT
 

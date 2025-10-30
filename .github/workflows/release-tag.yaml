@@ -1,0 +1,26 @@
+on:
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      trigger_release:
+        description: "Tag and trigger release manually"
+        required: false
+        default: true
+
+name: Tag and Release on PR Merge
+
+jobs:
+  get-released-policy-info:
+    name: "Get information about released policy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          # until https://github.com/actions/checkout/pull/579 is released
+          fetch-depth: 0
+
+  release-tag:
+    name: release-tag
+    uses: jvanz/github-actions/.github/workflows/reusable-release-tag.yml@monorepo
