@@ -144,8 +144,8 @@ jobs:
             repo: "${{ github.event.repository.name }}"
           policy:
             version: "${{ inputs.policy-version}}"
-            working_dir: "${{ needs.check-policy-inputs.outputs.policy-working-dir }}"
-            rust_package: "${{ needs.check-policy-inputs.outputs.policy-rust-package }}"
+            working_dir: "${{ needs.calculate-vars.outputs.policy-working-dir }}"
+            rust_package: "${{ needs.calculate-vars.outputs.policy-rust-package }}"
           EOF
 
       - name: Open PR with updatecli
