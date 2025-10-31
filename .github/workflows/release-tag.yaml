@@ -1,3 +1,17 @@
+# Documentation:
+# This workflow automates tagging and releasing policy subprojects in a monorepo.
+# On pull request merge or manual dispatch, it:
+#   - Calculates which policy directories under 'policies/' have changes.
+#   - Triggers a reusable workflow to tag and release each changed policy.
+#   - Supports manual selection of a policy directory via workflow dispatch input.
+#   - Dumps GitHub Actions contexts for debugging.
+#
+# Usage:
+#   - On PR merge: Automatically tags/releases changed policies.
+#   - Manual: Run with 'policy-dir' input to release a specific policy.
+#
+# Inputs:
+#   - policy-dir: (string, required for manual dispatch) The working directory under 'policies/' to release.
 on:
   pull_request:
     types:

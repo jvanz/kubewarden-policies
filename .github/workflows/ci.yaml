@@ -1,4 +1,5 @@
-# Run continuous integration on any rust policy change
+# This workflow watch for pull requests and run the CI for the changes policies.
+# The CI includes: build, unit test and integration tests.
 name: Continuous integration
 on:
   pull_request:

@@ -1,3 +1,22 @@
+# Documentation:
+# This workflow opens a pull request to release a policy from the monorepo.
+# It validates inputs, detects the policy language (Rust or Go), and prepares release metadata.
+# The workflow uses Updatecli to automate version updates and PR creation.
+#
+# Usage:
+#   - Trigger manually via workflow_dispatch, providing:
+#       - policy-dir: Directory under 'policies/' for the policy to release.
+#       - policy-version: Release version (semver, without 'v' prefix).
+#
+# Steps:
+#   1. Validate inputs and policy directory.
+#   2. Detect policy language and extract metadata.
+#   3. Prepare values for Updatecli.
+#   4. Use Updatecli to open a release PR.
+#
+# Inputs:
+#   - policy-dir: (string, required) Directory under 'policies/'.
+#   - policy-version: (string, required) Semver version (e.g., 0.1.0, 0.2.0-rc1).
 on:
   workflow_dispatch:
     inputs:
