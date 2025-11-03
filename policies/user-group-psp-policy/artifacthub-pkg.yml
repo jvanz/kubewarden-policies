@@ -7,7 +7,7 @@
 version: 2.0.0
 name: user-group-psp
 displayName: User Group PSP
-createdAt: 2025-11-03T18:11:17.473352456Z
+createdAt: 2025-11-03T18:49:19.656143999Z
 description: Kubewarden Policy that controls containers user and groups
 license: Apache-2.0
 homeURL: https://github.com/kubewarden/user-group-psp-policy
