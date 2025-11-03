@@ -1,0 +1,76 @@
+# This GitHub Actions workflow automates continuous integration for
+# policy projects. It detects changes in the `policies/` directory on pull
+# requests, determines which policies require CI jobs, and runs
+# language-specific tests for Rust and Go policies using reusable workflows.
+# The workflow calculates affected policy directories, distinguishes between
+# Rust and Go projects, and triggers corresponding test jobs in parallel for
+# each changed policy.
+name: Continuous integration
+on:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  calculate-policy-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      policy_rust_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_rust_working_dirs }}
+      policy_go_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_go_working_dirs }}
+      global_cargo_file_change: ${{ steps.calculate-policy-dirs.outputs.global_cargo_file_change }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
+        shell: bash
+        run: |
+          git remote -v
+          # list only changes of files in `policies/`:
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/${{ github.base_ref }} ${{ github.sha }} -- policies)"
+
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
+          # echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+          policy_rust_working_dirs=()
+          policy_go_working_dirs=()
+          for policy in $(echo "$policy_working_dirs" | jq -r '.[]'); do
+              # check if policy directory has cargo.toml file
+              if [ -f "$policy/Cargo.toml" ]; then
+                  policy_rust_working_dirs+=("$policy")
+              else
+                  policy_go_working_dirs+=("$policy")
+              fi
+          done
+          # TODO - remove duplicated entries
+          policy_rust_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_rust_working_dirs[@]}")
+          policy_go_working_dirs=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${policy_go_working_dirs[@]}")
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs"
+          echo "policy_go_working_dirs=$policy_go_working_dirs"
+          echo "policy_rust_working_dirs=$policy_rust_working_dirs" >> $GITHUB_OUTPUT
+          echo "policy_go_working_dirs=$policy_go_working_dirs" >> $GITHUB_OUTPUT
+
+  rust-policy-continuous-integration:
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
+    if: ${{ needs.calculate-policy-matrix.outputs.policy_rust_working_dirs != '[]' }}
+    needs: calculate-policy-matrix
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_rust_working_dirs) }}
+    with:
+      policy-working-dir: ${{ matrix.policy-working-dir }}
+
+  go-policy-continuous-integration:
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
+    if: ${{ needs.calculate-policy-matrix.outputs.policy_go_working_dirs != '[]' }}
+    needs: calculate-policy-matrix
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_go_working_dirs) }}
+    with:
+      policy-working-dir: ${{ matrix.policy-working-dir }}
