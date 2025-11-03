@@ -1,0 +1,114 @@
+# This workflow automates the release process for policy projects based on git
+# tags or manual dispatch. It extracts policy metadata from the tag, determines
+# the policy language (Rust or Go), and runs language-specific CI jobs. Upon
+# successful tests, it builds and publishes the policy artifact to the OCI
+# registry and creates a GitHub release. Finally, it updates the policy catalog
+# repository with the new release information.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*/v*"
+
+name: Release policy
+
+jobs:
+  calculate-policy-from-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      policy-name: ${{ steps.calculate-vars.outputs.policy_name }}
+      policy-working-dir: ${{ steps.calculate-vars.outputs.policy_working_dir }}
+      policy-version: ${{ steps.calculate-vars.outputs.policy_version }}
+      policy-id: ${{ steps.calculate-vars.outputs.policy_id }}
+      policy-language: ${{ steps.calculate-vars.outputs.policy_language }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - id: calculate-vars
+        shell: bash
+        run: |
+          policy_name=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\1/' )
+          policy_working_dir=policies/"$policy_name"
+          policy_ociUrl=$(yq -r '.annotations."io.kubewarden.policy.ociUrl"' $policy_working_dir/metadata.yml)
+          policy_id=${policy_ociUrl##*/}
+          policy_language=""
+
+          if [ ! -d "$policy_working_dir" ]; then
+            echo "$policy_working_dir does not exist, policy not found";
+            exit 1;
+          fi
+
+          if [ -f "$policy_working_dir/Cargo.toml" ]; then
+            policy_language="rust"
+          fi
+          if [ -f "$policy_working_dir/go.mod" ]; then
+            policy_language="go"
+          fi
+          # check if it can detect policy language
+          if [ "$policy_language" == "" ]; then
+            echo "cannot detect $policy_name policy language";
+            exit 1;
+          fi
+
+          echo "policy_name=$policy_name" >> $GITHUB_OUTPUT
+          echo "policy_id=$policy_id" >> $GITHUB_OUTPUT
+          echo "policy_working_dir=$policy_working_dir" >> $GITHUB_OUTPUT
+          echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )" >> $GITHUB_OUTPUT
+          echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
+
+  rust-policy-continuous-integration:
+    name: run unit tests and linters for Rust
+    needs: calculate-policy-from-tag
+    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'rust' }}
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
+    with:
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+
+  rust-release:
+    needs: [rust-policy-continuous-integration, calculate-policy-from-tag]
+    permissions:
+      # Required to create GH releases
+      contents: write
+      # Required to push to GHCR
+      packages: write
+      # Required by cosign keyless signing
+      id-token: write
+    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-rust.yml@monorepo
+    with:
+      oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+
+  go-policy-continuous-integration:
+    needs: calculate-policy-from-tag
+    name: run unit tests and linters for Go
+    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
+    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'go' }}
+    with:
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+
+  go-release:
+    needs: [go-policy-continuous-integration, calculate-policy-from-tag]
+    permissions:
+      # Required to create GH releases
+      contents: write
+      # Required to push to GHCR
+      packages: write
+      # Required by cosign keyless signing
+      id-token: write
+    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-go.yml@monorepo
+    with:
+      oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+
+  release-catalog:
+    needs: [calculate-policy-from-tag, go-release, rust-release]
+    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-catalog.yml@monorepo
+    with:
+      policy-name: ${{ needs.calculate-policy-from-tag.outputs.policy-name }}
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+    secrets:
+      # Required to dispatch the release event to the policy-catalog repository
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
