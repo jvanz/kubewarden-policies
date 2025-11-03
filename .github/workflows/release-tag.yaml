@@ -1,0 +1,54 @@
+# This workflow automates tagging and releasing policy projects when a pull
+# request is merged or via manual dispatch. It calculates which policy
+# directories have changed, then triggers a reusable workflow to create tags
+# and releases for each affected policy. The workflow supports both automatic
+# execution on PR merge and manual invocation with inputs.
+on:
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      policy-dir:
+        description: "working directory under policies folder"
+        required: true
+        type: string
+
+name: Tag and Release on PR Merge
+
+jobs:
+  calculate-policy-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
+        shell: bash
+        run: |
+          git remote -v
+          # list only changes of files in `policies/`:
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- policies)"
+
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
+          echo "policy_working_dirs=$policy_working_dirs"
+          echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+
+  release-tag:
+    name: release-tag
+    needs: calculate-policy-matrix
+    uses: jvanz/github-actions/.github/workflows/reusable-release-tag.yml@monorepo
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.policy-working-dir }}
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
+    with:
+      policy-working-dir: ${{ matrix.policy-working-dir }}
+      continue-on-error: true # If some policy tagging fail, the other should continue
