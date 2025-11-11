@@ -72,6 +72,7 @@ jobs:
       - uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
         with:
           version: "latest"
+          install-only: true
       - name: Install dependencies
         uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.15
       - name: Setup rust toolchain
