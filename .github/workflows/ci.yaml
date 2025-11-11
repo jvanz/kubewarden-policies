@@ -70,22 +70,18 @@ jobs:
         with:
           fetch-depth: 0 # checkout all history to do git diff
       - name: Policy linter
-        id: calculate-policy-dirs
         shell: bash
         run: |
           make -C ${{ matrix.policy-working-dir}} lint
       - name: Build policy
-        id: calculate-policy-dirs
         shell: bash
         run: |
           make -C ${{ matrix.policy-working-dir}} policy.wasm
       - name: Policy unit tests
-        id: calculate-policy-dirs
         shell: bash
         run: |
           make -C ${{ matrix.policy-working-dir}} test
       - name: Policy integration test
-        id: calculate-policy-dirs
         shell: bash
         run: |
           make -C ${{ matrix.policy-working-dir}} e2e-tests
