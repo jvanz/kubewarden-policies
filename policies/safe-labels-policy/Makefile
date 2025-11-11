@@ -1,13 +1,20 @@
 SOURCE_FILES := $(shell find . -type f -name '*.go')
 VERSION ?= $(shell git describe | cut -c2-)
 
+	
 policy.wasm: $(SOURCE_FILES) go.mod go.sum
+# CI is a environment variable set in the GitHub Actions workflow.
+# If we are running in CI, we assume TinyGo is already installed.
+ifeq ($(CI),true)
+	tinygo build -o policy.wasm -target=wasi -no-debug .
+else
 	docker run \
 		--rm \
 		-e GOFLAGS="-buildvcs=false" \
-		-v ${PWD}:/src \
+		-v $(dir $(realpath $(lastword $(MAKEFILE_LIST)))):/src \
 		-w /src tinygo/tinygo:0.39.0 \
 		tinygo build -o policy.wasm -target=wasi -no-debug .
+endif
 
 
 annotated-policy.wasm: policy.wasm metadata.yml
