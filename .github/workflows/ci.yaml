@@ -69,14 +69,12 @@ jobs:
       - name: Build policy
         shell: bash
         run: |
-          # make -C ${{ matrix.policy-working-dir}} policy.wasm
-          cd ${{ matrix.policy-working-dir }}
-          make policy.wasm
-      # - name: Policy unit tests
-      #   shell: bash
-      #   run: |
-      #     make -C ${{ matrix.policy-working-dir}} test
-      # - name: Policy integration test
-      #   shell: bash
-      #   run: |
-      #     make -C ${{ matrix.policy-working-dir}} e2e-tests
+          make -C ${{ matrix.policy-working-dir}} policy.wasm
+      - name: Policy unit tests
+        shell: bash
+        run: |
+          make -C ${{ matrix.policy-working-dir}} test
+      - name: Policy integration test
+        shell: bash
+        run: |
+          make -C ${{ matrix.policy-working-dir}} e2e-tests
