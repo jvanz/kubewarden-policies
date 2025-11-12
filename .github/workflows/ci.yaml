@@ -67,7 +67,7 @@ jobs:
       - name: Build policy
         shell: bash
         env:
-          GOPATH: /src/go
+          GOMODCACHE: /src/.gomodcache
         run: |
           make -C ${{ matrix.policy-working-dir}} policy.wasm
       - name: Policy unit tests
