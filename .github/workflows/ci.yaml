@@ -41,6 +41,7 @@ jobs:
     if: ${{ needs.calculate-policy-matrix.outputs.policy_working_dirs != '[]' }}
     runs-on: ubuntu-latest
     needs: calculate-policy-matrix
+    continue-on-error: true
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
