@@ -38,10 +38,9 @@ jobs:
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
   continuos-integration:
-    needs: calculate-policy-matrix
     uses: ./.github/workflows/ci.yaml
+    needs: calculate-policy-matrix
     if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
-    continue-on-error: true
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
