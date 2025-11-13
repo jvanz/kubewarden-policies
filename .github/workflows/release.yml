@@ -58,12 +58,9 @@ jobs:
   continuos-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-from-tag
-    if: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dirs != '[]' }}
-    strategy:
-      matrix:
-        policy-working-dir: ${{ fromJSON(needs.calculate-policy-from-tag.outputs.policy_working_dir) }}
     with:
-      policy-working-dir: ${{ matrix.policy-working-dir }}
+      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+
   # rust-release:
   #   needs: [rust-policy-continuous-integration, calculate-policy-from-tag]
   #   permissions:
