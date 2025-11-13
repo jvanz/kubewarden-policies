@@ -1,99 +1,48 @@
+# This GitHub Actions workflow automates continuous integration for
+# policy projects. It detects changes in the `policies/` directory on pull
+# requests, determines which policies require CI jobs, and runs
+# language-specific tests for Rust and Go policies using reusable workflows.
+# The workflow calculates affected policy directories, distinguishes between
+# Rust and Go projects, and triggers corresponding test jobs in parallel for
+# each changed policy.
 name: Continuous integration
 on:
-  workflow_call:
-    inputs:
-      policy-working-dir:
-        description: "Working directory of the policy. Useful for repos with policies in folders"
-        required: false
-        type: string
-        default: "."
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  linter:
+  calculate-policy-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
-        with:
-          version: "latest"
-          install-only: true
-      - name: Install dependencies
-        uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.15
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-        shell: bash
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Policy linter
-        shell: bash
-        run: |
-          make -C ${{ inputs.policy-working-dir}} lint
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
-        with:
-          version: "latest"
-          install-only: true
-      - name: Install dependencies
-        uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.15
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-        shell: bash
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Build policy
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
         shell: bash
         run: |
-          make -C ${{ inputs.policy-working-dir}} policy.wasm
-  unit-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
-        with:
-          version: "latest"
-          install-only: true
-      - name: Install dependencies
-        uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.15
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-        shell: bash
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Policy unit tests
-        shell: bash
-        run: |
-          make -C ${{ inputs.policy-working-dir}} test
-  e2e-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
-        with:
-          version: "latest"
-          install-only: true
-      - name: Install dependencies
-        uses: kubewarden/github-actions/policy-gh-action-dependencies@v4.5.15
-      - name: Setup rust toolchain
-        run: |
-          rustup toolchain install stable  --profile minimal --target wasm32-wasip1
-          rustup override set stable
-        shell: bash
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Policy integration test
-        shell: bash
-        run: |
-          make -C ${{ inputs.policy-working-dir}} e2e-tests
+          git remote -v
+          # list only changes of files in `policies/`:
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/${{ github.base_ref }} ${{ github.sha }} -- policies)"
+
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
+          echo "policy_working_dirs=$policy_working_dirs"
+          echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+
+  continuos-integration:
+    uses: ./.github/reusable-workflows/ci.yaml
+    needs: calculate-policy-matrix
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
+    with:
+      policy-working-dir: ${{ matrix.policy-working-dir }}

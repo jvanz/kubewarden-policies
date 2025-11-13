@@ -55,60 +55,61 @@ jobs:
           echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )" >> $GITHUB_OUTPUT
           echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
 
-  rust-policy-continuous-integration:
-    name: run unit tests and linters for Rust
+  continuos-integration:
+    uses: ./.github/reusable-workflows/ci.yaml
     needs: calculate-policy-from-tag
-    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'rust' }}
-    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-rust.yml@monorepo
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    strategy:
+      matrix:
+        policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
     with:
-      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+      policy-working-dir: ${{ matrix.policy-working-dir }}
 
-  rust-release:
-    needs: [rust-policy-continuous-integration, calculate-policy-from-tag]
-    permissions:
-      # Required to create GH releases
-      contents: write
-      # Required to push to GHCR
-      packages: write
-      # Required by cosign keyless signing
-      id-token: write
-    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-rust.yml@monorepo
-    with:
-      oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
-      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+  # rust-release:
+  #   needs: [rust-policy-continuous-integration, calculate-policy-from-tag]
+  #   permissions:
+  #     # Required to create GH releases
+  #     contents: write
+  #     # Required to push to GHCR
+  #     packages: write
+  #     # Required by cosign keyless signing
+  #     id-token: write
+  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-rust.yml@monorepo
+  #   with:
+  #     oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
+  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+  #     policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
 
-  go-policy-continuous-integration:
-    needs: calculate-policy-from-tag
-    name: run unit tests and linters for Go
-    uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
-    if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'go' }}
-    with:
-      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-
-  go-release:
-    needs: [go-policy-continuous-integration, calculate-policy-from-tag]
-    permissions:
-      # Required to create GH releases
-      contents: write
-      # Required to push to GHCR
-      packages: write
-      # Required by cosign keyless signing
-      id-token: write
-    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-go.yml@monorepo
-    with:
-      oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
-      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-      policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
-
-  release-catalog:
-    needs: [calculate-policy-from-tag, go-release, rust-release]
-    uses: jvanz/github-actions/.github/workflows/reusable-release-policy-catalog.yml@monorepo
-    with:
-      policy-name: ${{ needs.calculate-policy-from-tag.outputs.policy-name }}
-      policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-    secrets:
-      # Required to dispatch the release event to the policy-catalog repository
-      APP_ID: ${{ secrets.APP_ID }}
-      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+  # go-policy-continuous-integration:
+  #   needs: calculate-policy-from-tag
+  #   name: run unit tests and linters for Go
+  #   uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
+  #   if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'go' }}
+  #   with:
+  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+  #
+  # go-release:
+  #   needs: [go-policy-continuous-integration, calculate-policy-from-tag]
+  #   permissions:
+  #     # Required to create GH releases
+  #     contents: write
+  #     # Required to push to GHCR
+  #     packages: write
+  #     # Required by cosign keyless signing
+  #     id-token: write
+  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-go.yml@monorepo
+  #   with:
+  #     oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
+  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+  #     policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
+  #
+  # release-catalog:
+  #   needs: [calculate-policy-from-tag, go-release, rust-release]
+  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-catalog.yml@monorepo
+  #   with:
+  #     policy-name: ${{ needs.calculate-policy-from-tag.outputs.policy-name }}
+  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
+  #   secrets:
+  #     # Required to dispatch the release event to the policy-catalog repository
+  #     APP_ID: ${{ secrets.APP_ID }}
+  #     APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
