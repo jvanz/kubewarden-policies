@@ -49,6 +49,12 @@ jobs:
             exit 1;
           fi
 
+          echo "policy_name=$policy_name"
+          echo "policy_id=$policy_id"
+          echo "policy_working_dir=$policy_working_dir"
+          echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )"
+          echo "policy_language=$policy_language"
+
           echo "policy_name=$policy_name" >> $GITHUB_OUTPUT
           echo "policy_id=$policy_id" >> $GITHUB_OUTPUT
           echo "policy_working_dir=$policy_working_dir" >> $GITHUB_OUTPUT
@@ -61,49 +67,30 @@ jobs:
     with:
       policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
 
-  release:
+  pre-release-checks:
+    name: "Pre release checks"
     runs-on: ubuntu-latest
-    needs: [calculate-policy-from-tag, ci]
+    needs: [calculate-policy-from-tag]
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - id: calculate-version
-        shell: bash
-        working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-        run: |
-          if [ ${{ startsWith(github.ref, 'refs/tags/v') }} == true ]; then
-            # Triggered via normal tag.
-            # Use the latest tag (e.g: v0.1.11) without the `v` prefix.
-            version=$(git describe --tags --abbrev=0 | cut -c2-)
-          else
-            # Triggered via branch, version is not checked in artifacthub.
-            # Still, `make artifacthub-pkg.yml` needs a proper semver string.
-            if [ $(git describe --tags) ]; then
-              # Tag exists, use most recent tag with the number of additional
-              # commits on top of the tagged object & last commit hash (eg.
-              # v0.1.11-3-g8a36322), without the `v` prefix.
-              version=$(git describe --tags | cut -c2-)
-            else
-              # Tag doesn't exist, provide bogus version
-              version="0.0.0-$(git describe --always)-unreleased"
-            fi 
-          fi
-          echo "version=$version" >> $GITHUB_OUTPUT
-
-      - name:
-          Check that `io.kubewarden.policy.version` annotation is up-to-date
-          # skip when releasing :latest from main, versions will not match
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Check that `io.kubewarden.policy.version` annotation is up-to-date
         shell: bash
         working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
           VERSION=$(grep 'io.kubewarden.policy.version' metadata.yml | awk '{print $2}' | tr -d '"')
-          if [ "$VERSION" != "${{ inputs.expected-version }}" ]; then
-            echo "The value of io.kubewarden.policy.version annotation is not in sync with the expected version: '${VERSION}' != '${{ inputs.expected-version }}'"
+          if [ "$VERSION" != "${{ needs.calculate-policy-from-tag.outputs.policy-version  }}" ]; then
+            echo "The value of io.kubewarden.policy.version annotation is not in sync with the expected version: '${VERSION}' != '${{  needs.calculate-policy-from-tag.outputs.policy-version  }}'"
             exit 1
           fi
 
+  release:
+    runs-on: ubuntu-latest
+    needs: [calculate-policy-from-tag, ci, pre-release-checks]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Prepare Rust environment
         shell: bash
         run: |
@@ -116,7 +103,7 @@ jobs:
 
       - name: Annotate Wasm module
         shell: bash
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
           make -C ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }} annotated-policy.wasm
 
@@ -153,7 +140,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ inputs.GITHUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish Wasm policy artifact to OCI registry with the 'latest' tag
         shell: bash
@@ -161,7 +148,7 @@ jobs:
         run: |
           set -ex
           echo Pushing :latest policy to OCI container registry
-          IMMUTABLE_REF=$(kwctl push -o json ${{ inputs.annotated-wasm }} ${{ inputs.oci-target }}:latest | jq -r .immutable_ref)
+          IMMUTABLE_REF=$(kwctl push -o json annotated-policy.wasm ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}:latest | jq -r .immutable_ref)
 
           echo Keyless signing of policy using cosign
           cosign sign --yes ${IMMUTABLE_REF}
@@ -172,10 +159,10 @@ jobs:
         working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
           set -ex
-          export OCI_TAG="v${{ inputs.policy-version }}"
+          export OCI_TAG="v${{ needs.calculate-policy-from-tag.outputs.policy-version }}"
 
           echo Pushing tagged policy to OCI container registry
-          IMMUTABLE_REF=$(kwctl push -o json ${{ inputs.annotated-wasm }} ${{ inputs.oci-target }}:${OCI_TAG} | jq -r .immutable_ref)
+          IMMUTABLE_REF=$(kwctl push -o json annotated-policy.wasm ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}:${OCI_TAG} | jq -r .immutable_ref)
 
           echo Keyless signing of policy using cosign
           cosign sign --yes ${IMMUTABLE_REF}
@@ -183,15 +170,15 @@ jobs:
       - name: Create release
         id: create-release
         # if we are on a monorepo, we create a GH release directly and don't reuse a draft release
-        if: ${{ ! startsWith(github.ref, 'refs/heads/')  && inputs.policy-working-dir != '.' }}
+        if: ${{ ! startsWith(github.ref, 'refs/heads/')  }}
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
         env:
-          GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           name: ${{ github.ref_name }}
           draft: false
-          prerelease: ${{ contains(inputs.policy-version, '-alpha') || contains(inputs.policy-version, '-beta') || contains(inputs.policy-version, '-rc') }}
+          prerelease: ${{ contains(needs.calculate-policy-from-tag.outputs.policy-version, '-alpha') || contains(needs.calculate-policy-from-tag.outputs.policy-version, '-beta') || contains(needs.calculate-policy-from-tag.outputs.policy-version, '-rc') }}
           files: |
             ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy.wasm
 
