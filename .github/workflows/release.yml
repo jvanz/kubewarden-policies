@@ -103,7 +103,6 @@ jobs:
 
       - name: Annotate Wasm module
         shell: bash
-        working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
           make -C ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }} annotated-policy.wasm
 
