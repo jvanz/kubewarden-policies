@@ -5,7 +5,7 @@ policy.wasm: $(SOURCE_FILES) go.mod go.sum
 	docker run \
 		--rm \
 		-e GOFLAGS="-buildvcs=false" \
-		-v ${PWD}:/src \
+		-v $(dir $(realpath $(lastword $(MAKEFILE_LIST)))):/src \
 		-w /src tinygo/tinygo:0.39.0 \
 		tinygo build -o policy.wasm -target=wasi -no-debug .
 
