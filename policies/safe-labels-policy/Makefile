@@ -16,7 +16,6 @@ else
 		tinygo build -o policy.wasm -target=wasi -no-debug .
 endif
 
-
 annotated-policy.wasm: policy.wasm metadata.yml
 	kwctl annotate -m metadata.yml -u README.md -o annotated-policy.wasm policy.wasm
 
