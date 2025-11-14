@@ -70,6 +70,7 @@ jobs:
 
       - id: calculate-version
         shell: bash
+        working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
           if [ ${{ startsWith(github.ref, 'refs/tags/v') }} == true ]; then
             # Triggered via normal tag.
