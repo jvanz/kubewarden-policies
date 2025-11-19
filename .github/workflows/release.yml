@@ -107,6 +107,12 @@ jobs:
           rustup toolchain install stable  --profile minimal --target wasm32-wasip1
           rustup override set stable
 
+      - name: Install tinygo
+        shell: bash
+        run: |
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.39.0/tinygo_0.39.0_amd64.deb
+          sudo dpkg -i tinygo_0.39.0_amd64.deb
+
       - name: Build Wasm module
         shell: bash
         run: make -C ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }} policy.wasm
@@ -252,52 +258,3 @@ jobs:
               prerelease: isPreRelease,
               make_latest: !isPreRelease
             });
-
-  # rust-release:
-  #   needs: [rust-policy-continuous-integration, calculate-policy-from-tag]
-  #   permissions:
-  #     # Required to create GH releases
-  #     contents: write
-  #     # Required to push to GHCR
-  #     packages: write
-  #     # Required by cosign keyless signing
-  #     id-token: write
-  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-rust.yml@monorepo
-  #   with:
-  #     oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
-  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-  #     policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
-
-  # go-policy-continuous-integration:
-  #   needs: calculate-policy-from-tag
-  #   name: run unit tests and linters for Go
-  #   uses: jvanz/github-actions/.github/workflows/reusable-test-policy-go.yml@monorepo
-  #   if: ${{ needs.calculate-policy-from-tag.outputs.policy-language == 'go' }}
-  #   with:
-  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-  #
-  # go-release:
-  #   needs: [go-policy-continuous-integration, calculate-policy-from-tag]
-  #   permissions:
-  #     # Required to create GH releases
-  #     contents: write
-  #     # Required to push to GHCR
-  #     packages: write
-  #     # Required by cosign keyless signing
-  #     id-token: write
-  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-go.yml@monorepo
-  #   with:
-  #     oci-target: ghcr.io/${{ github.repository_owner }}/policies/${{ needs.calculate-policy-from-tag.outputs.policy-id }}
-  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-  #     policy-version: ${{ needs.calculate-policy-from-tag.outputs.policy-version }}
-  #
-  # release-catalog:
-  #   needs: [calculate-policy-from-tag, go-release, rust-release]
-  #   uses: jvanz/github-actions/.github/workflows/reusable-release-policy-catalog.yml@monorepo
-  #   with:
-  #     policy-name: ${{ needs.calculate-policy-from-tag.outputs.policy-name }}
-  #     policy-working-dir: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
-  #   secrets:
-  #     # Required to dispatch the release event to the policy-catalog repository
-  #     APP_ID: ${{ secrets.APP_ID }}
-  #     APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
