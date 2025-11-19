@@ -47,6 +47,11 @@ jobs:
           rustup toolchain install stable  --profile minimal --target wasm32-wasip1
           rustup override set stable
         shell: bash
+      - name: Install tinygo
+        shell: bash
+        run: |
+          wget https://github.com/tinygo-org/tinygo/releases/download/v${{ inputs.tinygo-version }}/tinygo_${{ inputs.tinygo-version }}_amd64.deb
+          sudo dpkg -i tinygo_0.39.0_amd64.deb
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Build policy
         shell: bash
