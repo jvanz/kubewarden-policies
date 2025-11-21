@@ -127,7 +127,8 @@ jobs:
         shell: bash
         working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
-          cosign sign-blob --yes --output-certificate policy-sbom.spdx.cert \
+          cosign sign-blob --yes --use-signing-config=true \
+            --output-certificate policy-sbom.spdx.cert \
             --output-signature policy-sbom.spdx.sig \
             policy-sbom.spdx.json
 
