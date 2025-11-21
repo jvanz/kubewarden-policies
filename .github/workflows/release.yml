@@ -127,9 +127,8 @@ jobs:
         shell: bash
         working-directory: ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}
         run: |
-          cosign sign-blob --yes --use-signing-config=true \
-            --output-certificate policy-sbom.spdx.cert \
-            --output-signature policy-sbom.spdx.sig \
+          cosign sign-blob --yes \
+            --bundle policy-sbom.spdx.jsonl.bundle.sigstore \
             policy-sbom.spdx.json
 
       - name: Upload policy SBOM files
@@ -138,8 +137,7 @@ jobs:
           name: policy-sbom
           path: |
             ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy-sbom.spdx.json
-            ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy-sbom.spdx.cert
-            ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy-sbom.spdx.sig
+            ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy-sbom.spdx.jsonl.bundle.sigstore
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
