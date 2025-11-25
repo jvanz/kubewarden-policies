@@ -36,9 +36,9 @@ jobs:
           git_files="$(git diff --no-color --find-renames --find-copies --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- policies)"
 
           # build policy_working_dirs:
-          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2,3 ))
           declare -p dir_bash_array # for debug
-          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/rust/Cargo.lock" and . != "policies/rust/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
           echo "policy_working_dirs=$policy_working_dirs"
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
