@@ -1,8 +1,9 @@
+ROOT_DIR ?= $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+POLICY_DIR := $(notdir $(patsubst %/,%,$(ROOT_DIR)))
 SOURCE_FILES := $(shell find . -type f -name '*.go')
 VERSION ?= $(shell git describe | cut -c2-)
 
-	
-policy.wasm: $(SOURCE_FILES) go.mod go.sum
+policy.wasm: $(SOURCE_FILES) 
 # CI is a environment variable set in the GitHub Actions workflow.
 # If we are running in CI, we assume TinyGo is already installed.
 ifeq ($(CI),true)
@@ -11,9 +12,9 @@ else
 	docker run \
 		--rm \
 		-e GOFLAGS="-buildvcs=false" \
-		-v $(dir $(realpath $(lastword $(MAKEFILE_LIST)))):/src \
+		-v $(ROOT_DIR)../:/src \
 		-w /src tinygo/tinygo:0.39.0 \
-		tinygo build -o policy.wasm -target=wasi -no-debug .
+		tinygo build -o $(POLICY_DIR)/policy.wasm -target=wasi -no-debug ./$(POLICY_DIR)
 endif
 
 
