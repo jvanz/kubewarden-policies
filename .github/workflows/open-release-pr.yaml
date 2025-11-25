@@ -70,7 +70,7 @@ jobs:
             exit 1;
           fi
 
-          if [ -f "$policy_working_dir/Cargo.toml" ]; then
+          if [[ "${{ inputs.policy-dir }}" == rust* ]]; then
             policy_language="rust"
             policy_rust_package=$(sed  -n 's,^name = \"\(.*\)\",\1,p' "$policy_working_dir/Cargo.toml")
             if [ "$policy_rust_package" == "" ]; then
@@ -78,7 +78,8 @@ jobs:
               exit 1;
             fi
           fi
-          if [ -f "$policy_working_dir/go.mod" ]; then
+
+          if [[ "${{ inputs.policy-dir }}" == go* ]]; then
             policy_language="go"
           fi
           # check if it can detect policy language
