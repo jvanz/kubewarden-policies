@@ -16,18 +16,18 @@ jobs:
   calculate-policy-from-tag:
     runs-on: ubuntu-latest
     outputs:
-      policy-name: ${{ steps.calculate-vars.outputs.policy_name }}
+      # policy-name: ${{ steps.calculate-vars.outputs.policy_name }}
       policy-working-dir: ${{ steps.calculate-vars.outputs.policy_working_dir }}
       policy-version: ${{ steps.calculate-vars.outputs.policy_version }}
       policy-id: ${{ steps.calculate-vars.outputs.policy_id }}
-      policy-language: ${{ steps.calculate-vars.outputs.policy_language }}
+      # policy-language: ${{ steps.calculate-vars.outputs.policy_language }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - id: calculate-vars
         shell: bash
         run: |
           policy_name=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\1/' )
-          policy_working_dir=policies/"$policy_name"
+          policy_working_dir=$( find policies -type d -name "$policy_name")
           policy_ociUrl=$(yq -r '.annotations."io.kubewarden.policy.ociUrl"' $policy_working_dir/metadata.yml)
           policy_id=${policy_ociUrl##*/}
           policy_language=""
@@ -37,29 +37,30 @@ jobs:
             exit 1;
           fi
 
-          if [ -f "$policy_working_dir/Cargo.toml" ]; then
-            policy_language="rust"
-          fi
-          if [ -f "$policy_working_dir/go.mod" ]; then
-            policy_language="go"
-          fi
+
+          # if [[ "$policy-working-dir" == policies/rust* ]]; then
+          #   policy_language="rust"
+          # fi
+          # if [[ "$policy-working-dir" == policies/go* ]]; then
+          #   policy_language="go"
+          # fi
           # check if it can detect policy language
           if [ "$policy_language" == "" ]; then
             echo "cannot detect $policy_name policy language";
             exit 1;
           fi
 
-          echo "policy_name=$policy_name"
+          # echo "policy_name=$policy_name"
           echo "policy_id=$policy_id"
           echo "policy_working_dir=$policy_working_dir"
           echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )"
-          echo "policy_language=$policy_language"
+          # echo "policy_language=$policy_language"
 
-          echo "policy_name=$policy_name" >> $GITHUB_OUTPUT
+          # echo "policy_name=$policy_name" >> $GITHUB_OUTPUT
           echo "policy_id=$policy_id" >> $GITHUB_OUTPUT
           echo "policy_working_dir=$policy_working_dir" >> $GITHUB_OUTPUT
           echo "policy_version=$( echo ${{ github.ref_name }} | sed 's/\(.*\)\/\(.*\)$/\2/' | cut -c2- )" >> $GITHUB_OUTPUT
-          echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
+          # echo "policy_language=$policy_language" >> $GITHUB_OUTPUT
 
   ci:
     uses: ./.github/workflows/reusable-ci.yaml
