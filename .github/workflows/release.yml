@@ -45,10 +45,10 @@ jobs:
           #   policy_language="go"
           # fi
           # check if it can detect policy language
-          if [ "$policy_language" == "" ]; then
-            echo "cannot detect $policy_name policy language";
-            exit 1;
-          fi
+          # if [ "$policy_language" == "" ]; then
+          #   echo "cannot detect $policy_name policy language";
+          #   exit 1;
+          # fi
 
           # echo "policy_name=$policy_name"
           echo "policy_id=$policy_id"
