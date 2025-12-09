@@ -4,7 +4,7 @@ on:
       - closed
   workflow_dispatch:
     inputs:
-      policy-dir:
+      policy-working-dir:
         description: "working directory under policies folder"
         required: true
         type: string
@@ -15,25 +15,29 @@ jobs:
   calculate-policy-matrix:
     runs-on: ubuntu-latest
     outputs:
-      policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
+      policy_working_dirs: ${{ steps.calculate-policy-working-dirs.outputs.policy_working_dirs }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0 # checkout all history to do git diff
       - name: calculate which policies need a CI job
-        id: calculate-policy-dirs
+        id: calculate-policy-working-dirs
         shell: bash
         run: |
-          git remote -v
-          # list only changes of files in `policies/`:
-          # We compare base and head references to avoid detecting changes merged to close each other.
-          # Otherwise, a job to tag the same policy could be triggered twice.
-          git_files="$(git diff --no-color --find-renames --find-copies --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- policies)"
+          if [ "${{github.event_name}}" == "workflow_dispatch" ]; then
+            dir_bash_array=("${{ inputs.policy-working-dir }}")
+          else
+            git remote -v
+            # list only changes of files in `policies/`:
+            # We compare base and head references to avoid detecting changes merged to close each other.
+            # Otherwise, a job to tag the same policy could be triggered twice.
+            git_files="$(git diff --no-color --find-renames --find-copies --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- policies)"
 
-          # build policy_working_dirs:
-          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2,3 ))
-          declare -p dir_bash_array # for debug
-          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/rust/Cargo.lock" and . != "policies/rust/Cargo.toml")) | unique' --args -- "${dir_bash_array[@]}")
+            # build policy_working_dirs:
+            dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          fi
+          declare -p dir_bash_array
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml" and . != "policies/go.mod" and . != "policies/go.sum")) | unique' --args -- "${dir_bash_array[@]}")
           echo "policy_working_dirs=$policy_working_dirs"
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
@@ -43,7 +47,7 @@ jobs:
     if: >
       github.event.pull_request.merged == true &&
       contains(github.event.pull_request.labels.*.name, 'TRIGGER-RELEASE') ||
-      github.event.inputs.trigger_release == 'true'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: true
     concurrency:
@@ -56,7 +60,6 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0 # also checkout tags
-
       - name: Extract version from metadata.yml
         id: extract-version
         shell: bash

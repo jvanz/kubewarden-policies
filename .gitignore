@@ -1,1 +1,2 @@
-policies/rust/target
+policies/target
+policies/bin

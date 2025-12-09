@@ -12,12 +12,12 @@ import (
 )
 
 // A wrapper around the standard regexp.Regexp struct
-// that implements marshalling and unmarshalling
+// that implements marshalling and unmarshalling.
 type RegularExpression struct {
 	*regexp.Regexp
 }
 
-// Convenience method to build a regular expression
+// Convenience method to build a regular expression.
 func CompileRegularExpression(expr string) (*RegularExpression, error) {
 	nativeRegExp, err := regexp.Compile(expr)
 	if err != nil {
@@ -65,10 +65,10 @@ type Settings struct {
 //	   }
 //	}
 func NewSettingsFromValidationReq(payload []byte) (Settings, error) {
-	settingsJson := gjson.GetBytes(payload, "settings")
+	settingsJSON := gjson.GetBytes(payload, "settings")
 
 	settings := Settings{}
-	err := json.Unmarshal([]byte(settingsJson.Raw), &settings)
+	err := json.Unmarshal([]byte(settingsJSON.Raw), &settings)
 	if err != nil {
 		return Settings{}, err
 	}
