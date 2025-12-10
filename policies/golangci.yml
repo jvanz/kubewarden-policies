@@ -192,6 +192,9 @@ linters:
           - noctx
           - wrapcheck
         path: _test\.go
+      - linters:
+          - unparam
+        path: safe-labels-policy/settings.go
     paths:
       - third_party$
       - builtin$
