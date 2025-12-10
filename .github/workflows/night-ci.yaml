@@ -22,8 +22,7 @@ jobs:
         shell: bash
         run: |
           git remote -v
-          # list only changes of files in `policies/`:
-          policies_working_dirs=($(find policies -type d -maxdepth 2 -mindepth 2))
+          policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
 
           declare -p policies_working_dirs # for debug
           policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
