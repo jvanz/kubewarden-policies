@@ -147,20 +147,6 @@ jobs:
           echo Keyless signing of policy using cosign
           cosign sign --yes ${IMMUTABLE_REF}
 
-      # - name: Create release
-      #   id: create-release
-      #   if: ${{ ! startsWith(github.ref, 'refs/heads/')  }}
-      #   uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ github.ref }}
-      #     name: ${{ github.ref_name }}
-      #     draft: false
-      #     prerelease: ${{ contains(needs.calculate-policy-from-tag.outputs.policy-version, '-alpha') || contains(needs.calculate-policy-from-tag.outputs.policy-version, '-beta') || contains(needs.calculate-policy-from-tag.outputs.policy-version, '-rc') }}
-      #     files: |
-      #       ${{ needs.calculate-policy-from-tag.outputs.policy-working-dir }}/policy.wasm
-
       - name: Create release
         id: create-release
         uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
