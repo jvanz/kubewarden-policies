@@ -65,22 +65,16 @@ jobs:
             exit 1;
           fi
 
-          if [[ "${{ inputs.policy-dir }}" == rust* ]]; then
+          if [ -f "$policy_working_dir/Cargo.toml" ]; then
             policy_language="rust"
             policy_rust_package=$(sed  -n 's,^name = \"\(.*\)\",\1,p' "$policy_working_dir/Cargo.toml")
             if [ "$policy_rust_package" == "" ]; then
               echo "cannot get rust policy $policy_working_dir package name";
               exit 1;
             fi
-          fi
-
-          if [[ "${{ inputs.policy-dir }}" == go* ]]; then
+          else
+            # Currently this repository supports go and rust policies only
             policy_language="go"
-          fi
-          # check if it can detect policy language
-          if [ "$policy_language" == "" ]; then
-            echo "cannot detect $policy_working_dir policy language";
-            exit 1;
           fi
 
           echo "policy_working_dir=$policy_working_dir"
