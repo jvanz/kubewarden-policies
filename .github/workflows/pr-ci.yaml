@@ -1,8 +1,6 @@
-name: Continuous integration
+name: Pull request continuous integration
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 21 * * *"
+  pull_request:
 
 defaults:
   run:
@@ -22,16 +20,19 @@ jobs:
         shell: bash
         run: |
           git remote -v
-          policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
+          # list only changes of files in `policies/`:
+          git_files="$(git diff --no-color --find-renames --find-copies --name-only origin/${{ github.base_ref }} ${{ github.sha }} -- policies)"
 
-          declare -p policies_working_dirs # for debug
-          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
+          # build policy_working_dirs:
+          dir_bash_array=($(echo "$git_files" | cut -d/ -f1,2 ))
+          declare -p dir_bash_array # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | map(select(. != "policies/Cargo.lock" and . != "policies/Cargo.toml" and . != "policies/go.mod" and . != "policies/go.sum")) | unique' --args -- "${dir_bash_array[@]}")
+          echo "policy_working_dirs=$policy_working_dirs"
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
   continuos-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix
-    if: github.event_name == "workflow_dispatch"
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
