@@ -55,7 +55,7 @@ jobs:
   continuos-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix
-    if: github.event_name == "pull_request" && needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]'
+    if: github.event_name == "pull_request"
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
@@ -65,7 +65,7 @@ jobs:
   continuos-integration-regular-ci:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix-regular-ci
-    if: github.event_name == "workflow_dispatch" && needs.calculate-policy-matrix-regular-ci.outputs.policy-working-dirs != '[]'
+    if: github.event_name == "workflow_dispatch"
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix-regular-ci.outputs.policy_working_dirs) }}
