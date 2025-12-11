@@ -12,6 +12,7 @@ defaults:
 jobs:
   calculate-policy-matrix:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name = "pull_request" }}
     outputs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
@@ -36,7 +37,7 @@ jobs:
   continuos-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix
-    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' }}
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' && github.event_name = "pull_request" }}
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
@@ -45,7 +46,7 @@ jobs:
 
   calculate-policy-matrix-regular-ci:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == "schedule" || github.event_name = "workflow_dispatch"}}
+    if: ${{ github.event_name = "schedule" || github.event_name = "workflow_dispatch"}}
     outputs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
@@ -66,7 +67,7 @@ jobs:
   continuos-integration-regular-ci:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix-regular-ci
-    if: ${{ needs.calculate-policy-matrix-regular-ci.outputs.policy-working-dirs != '[]' &&  (github.event_name == "schedule" || github.event_name = "workflow_dispatch") }}
+    if: ${{ needs.calculate-policy-matrix-regular-ci.outputs.policy-working-dirs != '[]' &&  (github.event_name = "schedule" || github.event_name = "workflow_dispatch") }}
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
