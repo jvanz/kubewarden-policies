@@ -12,7 +12,6 @@ defaults:
 jobs:
   calculate-policy-matrix:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name = "pull_request" }}
     outputs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
@@ -44,26 +43,25 @@ jobs:
     with:
       policy-working-dir: ${{ matrix.policy-working-dir }}
 
-  # calculate-policy-matrix-regular-ci:
-  #   runs-on: ubuntu-latest
-  #   if: ${{ github.event_name = "schedule" || github.event_name = "workflow_dispatch"}}
-  #   outputs:
-  #     policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
-  #   steps:
-  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #       with:
-  #         fetch-depth: 0 # checkout all history to do git diff
-  #     - name: calculate which policies need a CI job
-  #       id: calculate-policy-dirs
-  #       shell: bash
-  #       run: |
-  #         git remote -v
-  #         policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
-  #
-  #         declare -p policies_working_dirs # for debug
-  #         policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
-  #         echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
-  #
+  calculate-policy-matrix-regular-ci:
+    runs-on: ubuntu-latest
+    outputs:
+      policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # checkout all history to do git diff
+      - name: calculate which policies need a CI job
+        id: calculate-policy-dirs
+        shell: bash
+        run: |
+          git remote -v
+          policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
+
+          declare -p policies_working_dirs # for debug
+          policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
+          echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
+
   # continuos-integration-regular-ci:
   #   uses: ./.github/workflows/reusable-ci.yaml
   #   needs: calculate-policy-matrix-regular-ci
