@@ -1,7 +1,7 @@
 name: Continuous integration
 on:
   pull_request:
-  # workflow_dispatch:
+  workflow_dispatch:
   # schedule:
   #   - cron: "0 21 * * *"
 
@@ -46,13 +46,13 @@ jobs:
   calculate-policy-matrix-regular-ci:
     runs-on: ubuntu-latest
     outputs:
-      policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
+      policy_working_dirs: ${{ steps.calculate-policy-dirs-regular-ci.outputs.policy_working_dirs }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0 # checkout all history to do git diff
       - name: calculate which policies need a CI job
-        id: calculate-policy-dirs
+        id: calculate-policy-dirs-regular-ci
         shell: bash
         run: |
           git remote -v
