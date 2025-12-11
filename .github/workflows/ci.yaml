@@ -36,7 +36,7 @@ jobs:
   continuos-integration:
     uses: ./.github/workflows/reusable-ci.yaml
     needs: calculate-policy-matrix
-    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]' && github.event_name = "pull_request" }}
+    if: ${{ needs.calculate-policy-matrix.outputs.policy-working-dirs != '[]'}}
     strategy:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
