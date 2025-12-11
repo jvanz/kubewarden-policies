@@ -23,69 +23,69 @@ jobs:
           policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
           echo "policy_working_dirs=$policy_working_dirs" >> $GITHUB_OUTPUT
 
-  open-release-pr:
-    name: "Open PR to release policy"
-    runs-on: ubuntu-latest
-    needs: calculate-vars
-    strategy:
-      matrix:
-        policy-working-dir: ${{ fromJSON(needs.calculate-vars.outputs.policy_working_dirs) }}
-    steps:
-      - name: Install Updatecli in the runner
-        uses: updatecli/updatecli-action@719e3592d124cbf826da704cbe557e1221dd4bba # v2.94.0
-
-      - uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
-        id: generate-token
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Restore cargo-set-version from cache
-        id: restore-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.cargo/bin
-          key: cargo-edit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-edit-${{ runner.os }}-
-
-      - name: Install cargo-set-version
-        if: ! steps.restore-cache.outputs.cache-hit
-        run: cargo install cargo-edit
-
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Get policy info
-        id: policy-info
-        uses: ./.github/actions/get-policy-info
-
-      - name: Create draft release and calculate version
-        id: create-release
-        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
-        with:
-          config-name: "release-drafter-${{ steps.policy-info.outputs.policy-id }}.yml"
-          disable-autolabeler: true
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-
-      - name: Create values.yaml for Updatecli based on release drafter release and policy information
-        run: |
-          cat <<EOF > values.yaml
-          github:
-            owner: "${{ github.repository_owner }}"
-            repo: "${{ github.event.repository.name }}"
-          policy:
-            version: "${{ steps.create-release.outputs.resolved_version}}"
-            working_dir: "${{ matrix.policy-working-dir }}"
-            rust_package: "${{ steps.policy-info.outputs.policy-rust-package }}"
-          EOF
-
-      - name: Open PR with updatecli
-        env:
-          UPDATECLI_GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: |-
-          updatecli apply --config updatecli/updatecli.d/open-release-pr.yaml \
-            --values updatecli/values.yaml \
-            --values $(pwd)/values.yaml
+  # open-release-pr:
+  #   name: "Open PR to release policy"
+  #   runs-on: ubuntu-latest
+  #   needs: calculate-vars
+  #   strategy:
+  #     matrix:
+  #       policy-working-dir: ${{ fromJSON(needs.calculate-vars.outputs.policy_working_dirs) }}
+  #   steps:
+  #     - name: Install Updatecli in the runner
+  #       uses: updatecli/updatecli-action@719e3592d124cbf826da704cbe557e1221dd4bba # v2.94.0
+  #
+  #     - uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+  #       id: generate-token
+  #       with:
+  #         app-id: ${{ secrets.APP_ID }}
+  #         private-key: ${{ secrets.APP_PRIVATE_KEY }}
+  #
+  #     - name: Restore cargo-set-version from cache
+  #       id: restore-cache
+  #       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+  #       with:
+  #         path: ~/.cargo/bin
+  #         key: cargo-edit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+  #         restore-keys: |
+  #           cargo-edit-${{ runner.os }}-
+  #
+  #     - name: Install cargo-set-version
+  #       if: ! steps.restore-cache.outputs.cache-hit
+  #       run: cargo install cargo-edit
+  #
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Get policy info
+  #       id: policy-info
+  #       uses: ./.github/actions/get-policy-info
+  #
+  #     - name: Create draft release and calculate version
+  #       id: create-release
+  #       uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+  #       with:
+  #         config-name: "release-drafter-${{ steps.policy-info.outputs.policy-id }}.yml"
+  #         disable-autolabeler: true
+  #       env:
+  #         GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+  #
+  #     - name: Create values.yaml for Updatecli based on release drafter release and policy information
+  #       run: |
+  #         cat <<EOF > values.yaml
+  #         github:
+  #           owner: "${{ github.repository_owner }}"
+  #           repo: "${{ github.event.repository.name }}"
+  #         policy:
+  #           version: "${{ steps.create-release.outputs.resolved_version}}"
+  #           working_dir: "${{ matrix.policy-working-dir }}"
+  #           rust_package: "${{ steps.policy-info.outputs.policy-rust-package }}"
+  #         EOF
+  #
+  #     - name: Open PR with updatecli
+  #       env:
+  #         UPDATECLI_GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+  #       run: |-
+  #         updatecli apply --config updatecli/updatecli.d/open-release-pr.yaml \
+  #           --values updatecli/values.yaml \
+  #           --values $(pwd)/values.yaml
