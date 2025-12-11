@@ -60,6 +60,8 @@ jobs:
       - name: Get policy info
         id: policy-info
         uses: ./.github/actions/get-policy-info
+        with:
+          policy-working-dir: ${{ matrix.policy-working-dir }}
 
       - name: Create draft release and calculate version
         id: create-release
