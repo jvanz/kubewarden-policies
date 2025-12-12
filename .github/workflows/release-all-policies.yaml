@@ -24,7 +24,7 @@ jobs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
       - name: Check inputs
-        if: ${{ inputs.policy-working-dir != "" }}
+        if: ${{ inputs.policy-working-dir != '' }}
         run: |
           if [ -z "${{ inputs.policy-version }}" ]; then
             echo "::error title=Invalid inputs::policy-version must be defined together with policy-working-dir"
