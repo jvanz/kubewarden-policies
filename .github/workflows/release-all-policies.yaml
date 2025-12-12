@@ -1,5 +1,19 @@
 on:
   workflow_dispatch:
+    inputs:
+      policy-working-dir:
+        description: "working directory under policies folder"
+        required: false
+        type: string
+        default: ""
+      policy-version:
+        description: |
+          Release version of the policy, without 'v' prefix. Optional.
+          Defaults to extracting the version from tag if tag present.
+          E.g: tag "v0.1.0", policy-version=0.1.0
+        required: false
+        type: string
+        default: ""
 
 name: Open release PRs for all policies
 
@@ -9,6 +23,12 @@ jobs:
     outputs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
+      - name: Check inputs
+        if: ${{ inputs.policy-working-dir != "" }}
+        run: |
+          if [ -z "${{ inputs.policy-version }}" ]; then
+            echo "::error title=Invalid inputs::policy-version must be defined together with policy-working-dir"
+          fi
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0 # checkout all history to do git diff
@@ -16,8 +36,14 @@ jobs:
         id: calculate-policy-dirs
         shell: bash
         run: |
-          git remote -v
-          policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
+          if [ -z "${{inputs.policy-working-dir}}" ]; then
+            # Release a single policy
+            policies_working_dirs=("${{ inputs.policy-working-dir }}")
+          else
+            # All policies must be released
+            git remote -v
+            policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
+          fi
 
           declare -p policies_working_dirs # for debug
           policy_working_dirs=$(jq --compact-output --null-input '$ARGS.positional | unique' --args -- "${policies_working_dirs[@]}")
@@ -95,13 +121,13 @@ jobs:
       # the script will not update the metadata.yaml file. Therefore, the tag
       # is the only thing missing
       - name: Trigger release workflow
-        if: ${{ steps.get-policy-version.outputs.policy-version != '' }}
+        if: ${{ steps.get-policy-version.outputs.policy-version == ${{ steps.create-release.outputs.resolved_version }}
         run: gh workflow run release-tag.yaml --field  "policy-working-dir=${{matrix.policy-working-dir }}"
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Create values.yaml for Updatecli based on release drafter release and policy information
-        if: ${{ steps.get-policy-version.outputs.policy-version == '' }}
+        if: ${{ steps.get-policy-version.outputs.policy-version != ${{ steps.create-release.outputs.resolved_version }}
         run: |
           cat <<EOF > values.yaml
           github:
@@ -114,7 +140,7 @@ jobs:
           EOF
 
       - name: Open PR with updatecli
-        if: ${{ steps.get-policy-version.outputs.policy-version == '' }}
+        if: ${{ steps.get-policy-version.outputs.policy-version != ${{ steps.create-release.outputs.resolved_version }}
         env:
           UPDATECLI_GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |-
