@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       policy-working-dir:
-        description: "working directory under policies folder"
+        description: "Working directory under policies folder"
         required: false
         type: string
         default: ""
@@ -41,8 +41,14 @@ jobs:
             git remote -v
             policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
           else
+            policy_working_dir=policies/${{ inputs.policy-working-dir }}
+            if [ ! -d "$policy_working_dir" ]; then
+              echo "$policy_working_dir does not exist"
+              echo "::error title=Invalid inputs::$policy_working_dir does not exist"
+              exit 1;
+            fi
             # Release a single policy
-            policies_working_dirs=("${{ inputs.policy-working-dir }}")
+            policies_working_dirs=("policies/${{ inputs.policy-working-dir }}")
           fi
 
           declare -p policies_working_dirs # for debug
@@ -83,11 +89,11 @@ jobs:
         if: ! steps.restore-cache.outputs.cache-hit
         run: cargo install cargo-edit
 
-      - name: Get policy info
+      - name: Get policy metadata
         id: policy-info
-        uses: ./.github/actions/get-policy-info
+        uses: ./.github/actions/get-policy-metadata
         with:
-          policy-working-dir: ${{ matrix.policy-working-dir }}
+          policy-working-dir: "policies/${{ matrix.policy-working-dir }}"
 
       - name: Check if there is a tag to the version from metadata file.
         id: get-expected-version
@@ -108,7 +114,7 @@ jobs:
           # drafter should use the current version already set in the policy.
           # Otherwise, let's release-drafter calculate the version for us based
           # on the PRs merged.
-          policy_tag=$(git tag -l  $(basename ${{matrix.policy-working-dir }})/v${{ steps.policy-info.outputs.policy-version }})
+          policy_tag=$(git tag -l  $(basename ${{ matrix.policy-working-dir }})/v${{ steps.policy-info.outputs.policy-version }})
           if [ -z "$policy_tag" ]; then
             # No tag, let's use the version from the policy
             echo "version=${{ steps.policy-info.outputs.policy-version }}" >> $GITHUB_OUTPUT
