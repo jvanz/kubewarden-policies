@@ -121,13 +121,13 @@ jobs:
       # the script will not update the metadata.yaml file. Therefore, the tag
       # is the only thing missing
       - name: Trigger release workflow
-        if: ${{ steps.get-policy-version.outputs.policy-version == ${{ steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-policy-version.outputs.policy-version == steps.create-release.outputs.resolved_version }}
         run: gh workflow run release-tag.yaml --field  "policy-working-dir=${{matrix.policy-working-dir }}"
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Create values.yaml for Updatecli based on release drafter release and policy information
-        if: ${{ steps.get-policy-version.outputs.policy-version != ${{ steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-policy-version.outputs.policy-version != steps.create-release.outputs.resolved_version }}
         run: |
           cat <<EOF > values.yaml
           github:
@@ -140,7 +140,7 @@ jobs:
           EOF
 
       - name: Open PR with updatecli
-        if: ${{ steps.get-policy-version.outputs.policy-version != ${{ steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-policy-version.outputs.policy-version != steps.create-release.outputs.resolved_version }}
         env:
           UPDATECLI_GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |-
