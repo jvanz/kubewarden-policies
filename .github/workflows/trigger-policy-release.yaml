@@ -88,7 +88,7 @@ jobs:
       #       cargo-edit-${{ runner.os }}-
 
       - name: Install cargo-set-version
-        if: ! steps.restore-cache.outputs.cache-hit
+        # if: ! steps.restore-cache.outputs.cache-hit
         run: cargo install cargo-edit
 
       - name: Get policy metadata
