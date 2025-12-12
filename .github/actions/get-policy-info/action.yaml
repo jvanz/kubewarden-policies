@@ -9,14 +9,17 @@ inputs:
     type: string
 outputs:
   policy-id:
-    description: ""
+    description: "Policy ID extract from the policy OCI URL"
     value: ${{ steps.policy-info.outputs.policy-id}}
   policy-rust-package:
-    description: ""
+    description: "Rust package name from Cargo.toml"
     value: ${{ steps.policy-info.outputs.policy-rust-package}}
   policy-language:
-    description: ""
+    description: "Policy programming language detected"
     value: ${{ steps.policy-info.outputs.policy-language}}
+  policy-version:
+    description: "Policy version from the metadata.yaml"
+    value: ${{ steps.policy-info.outputs.policy-version}}
 runs:
   using: "composite"
   steps:
@@ -30,6 +33,7 @@ runs:
         fi
 
         policy_ociUrl=$(yq -r '.annotations."io.kubewarden.policy.ociUrl"' '${{ inputs.policy-working-dir}}/metadata.yml')
+        policy_version=$(yq -r '.annotations."io.kubewarden.policy.version"' '${{ inputs.policy-working-dir}}/metadata.yml')
         policy_id=${policy_ociUrl##*/}
         policy_language=""
         policy_rust_package=""
@@ -49,7 +53,9 @@ runs:
         echo "policy_language=$policy_language"
         echo "policy_rust_package=$policy_rust_package"
         echo "policy-id=$policy_id"
+        echo "policy-version=$policy_version"
 
         echo "policy-language=$policy_language" >> $GITHUB_OUTPUT
         echo "policy-rust-package=$policy_rust_package" >> $GITHUB_OUTPUT
         echo "policy-id=$policy_id" >> $GITHUB_OUTPUT
+        echo "policy-version=$policy_version" >> $GITHUB_OUTPUT
