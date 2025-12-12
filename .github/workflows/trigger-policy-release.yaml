@@ -57,6 +57,10 @@ jobs:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
     steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
 
@@ -78,10 +82,6 @@ jobs:
       - name: Install cargo-set-version
         if: ! steps.restore-cache.outputs.cache-hit
         run: cargo install cargo-edit
-
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 0
 
       - name: Get policy info
         id: policy-info
