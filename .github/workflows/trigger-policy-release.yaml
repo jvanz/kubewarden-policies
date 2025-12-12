@@ -93,7 +93,7 @@ jobs:
         id: policy-info
         uses: ./.github/actions/get-policy-metadata
         with:
-          policy-working-dir: "policies/${{ matrix.policy-working-dir }}"
+          policy-working-dir: "${{ matrix.policy-working-dir }}"
 
       - name: Check if there is a tag to the version from metadata file.
         id: get-expected-version
