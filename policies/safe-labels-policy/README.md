@@ -1,6 +1,8 @@
 [![Kubewarden Policy Repository](https://github.com/kubewarden/community/blob/main/badges/kubewarden-policies.svg)](https://github.com/kubewarden/community/blob/main/REPOSITORIES.md#policy-scope)
 [![Stable](https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge)](https://github.com/kubewarden/community/blob/main/REPOSITORIES.md#stable)
 
+DUMMY FIX
+
 This policy validates the labels of generic Kubernetes objects.
 
 The policy rejects all the resources that use one or more labels on the
@@ -17,12 +19,12 @@ The policy settings look like that:
 ```yaml
 # List of labels that cannot be used
 denied_labels:
-- foo
-- bar
+  - foo
+  - bar
 
 # List of labels that must be defined
 mandatory_labels:
-- cost-center
+  - cost-center
 
 # Labels that are validate with user-defined RegExp
 # Failing to comply with the RegExp resuls in the object
@@ -64,13 +66,13 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - http:
-      paths:
-      - path: /testpath
-        pathType: Prefix
-        backend:
-          service:
-            name: test
-            port:
-              number: 80
+    - http:
+        paths:
+          - path: /testpath
+            pathType: Prefix
+            backend:
+              service:
+                name: test
+                port:
+                  number: 80
 ```
