@@ -37,12 +37,12 @@ jobs:
         shell: bash
         run: |
           if [ -z "${{inputs.policy-working-dir}}" ]; then
-            # Release a single policy
-            policies_working_dirs=("${{ inputs.policy-working-dir }}")
-          else
             # All policies must be released
             git remote -v
             policies_working_dirs=($(find policies -maxdepth 2 -name Makefile -exec dirname '{}' \;))
+          else
+            # Release a single policy
+            policies_working_dirs=("${{ inputs.policy-working-dir }}")
           fi
 
           declare -p policies_working_dirs # for debug
