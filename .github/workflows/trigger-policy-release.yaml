@@ -25,12 +25,6 @@ jobs:
     outputs:
       policy_working_dirs: ${{ steps.calculate-policy-dirs.outputs.policy_working_dirs }}
     steps:
-      - name: Check inputs
-        if: ${{ inputs.policy-working-dir != '' }}
-        run: |
-          if [ -z "${{ inputs.policy-version }}" ]; then
-            echo "::error title=Invalid inputs::policy-version must be defined together with policy-working-dir"
-          fi
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0 # checkout all history to do git diff
