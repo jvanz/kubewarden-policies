@@ -74,7 +74,7 @@ jobs:
           # Otherwise, let's release-drafter calculate the version for us based
           # on the PRs merged.
           policy_tag = $(git tag -l  $(basename ${{matrix.policy-working-dir }})/v${{ steps.policy-info.outputs.policy-version }})
-          if [ $policy_tag == "" ]; then
+          if [ "$policy_tag" == "" ]; then
             echo "policy-version=${{ steps.policy-info.outputs.policy-version }}" >> $GITHUB_OUTPUT
             exit 0
           fi
