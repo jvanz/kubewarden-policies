@@ -57,8 +57,8 @@ jobs:
       matrix:
         policy-working-dir: ${{ fromJSON(needs.calculate-policy-matrix.outputs.policy_working_dirs) }}
     steps:
-      - name: Install Updatecli in the runner
-        uses: updatecli/updatecli-action@719e3592d124cbf826da704cbe557e1221dd4bba # v2.94.0
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
 
       - uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
         id: generate-token
@@ -90,11 +90,16 @@ jobs:
           policy-working-dir: ${{ matrix.policy-working-dir }}
 
       - name: Check if there is a tag to the version from metadata file.
-        id: get-policy-version
+        id: get-expected-version
         shell: bash
         run: |
           if [ ! -z "${{ inputs.policy-version }}" ]; then
-            echo "policy-version=${{ inputs.policy-version }}" >> $GITHUB_OUTPUT
+            semver_result=$(semver compare ${{ steps.policy-info.outputs.policy-version }} ${{ inputs.policy-version }}) 
+            if [ "$semver_result" == "1" ]; then
+              echo "::error title=Invalid version::Cannot downgrade a policy version"
+              exit 1
+            fi
+            echo "version=${{ inputs.policy-version }}" >> $GITHUB_OUTPUT
             exit 0
           fi
           # If there is no tag with the current version in the metadata file,
@@ -106,10 +111,10 @@ jobs:
           policy_tag=$(git tag -l  $(basename ${{matrix.policy-working-dir }})/v${{ steps.policy-info.outputs.policy-version }})
           if [ -z "$policy_tag" ]; then
             # No tag, let's use the version from the policy
-            echo "policy-version=${{ steps.policy-info.outputs.policy-version }}" >> $GITHUB_OUTPUT
+            echo "version=${{ steps.policy-info.outputs.policy-version }}" >> $GITHUB_OUTPUT
             exit 0
           fi
-          echo "policy-version=''" >> $GITHUB_OUTPUT
+          echo "version=''" >> $GITHUB_OUTPUT
 
       - name: Create draft release and calculate version
         id: create-release
@@ -117,21 +122,29 @@ jobs:
         with:
           config-name: "release-drafter-${{ steps.policy-info.outputs.policy-id }}.yml"
           disable-autolabeler: true
-          version: ${{ steps.get-policy-version.outputs.policy-version}}
+          version: ${{ steps.get-expected-version.outputs.version}}
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+      - name: Ensure that release drafter is not downgrading the policy version
+        run: |
+          semver_result=$(semver compare ${{ steps.policy-info.outputs.policy-version }} ${{ steps.create-release.outputs.resolved_version }}) 
+          if [ "$semver_result" == "1" ]; then
+            echo "::error title=Invalid version::Cannot downgrade a policy version"
+            exit 1
+          fi
 
       # If there is version lacking a tag, we do not need to run updatecli because
       # the script will not update the metadata.yaml file. Therefore, the tag
       # is the only thing missing
       - name: Trigger tagging workflow
-        if: ${{ steps.get-policy-version.outputs.policy-version == steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-expected-version.outputs.version == steps.create-release.outputs.resolved_version }}
         run: gh workflow run release-tag.yaml --field  "policy-working-dir=${{matrix.policy-working-dir }}"
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Create values.yaml for Updatecli based on release drafter release and policy information
-        if: ${{ steps.get-policy-version.outputs.policy-version != steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-expected-version.outputs.version != steps.create-release.outputs.resolved_version }}
         run: |
           cat <<EOF > values.yaml
           github:
@@ -144,7 +157,7 @@ jobs:
           EOF
 
       - name: Open PR with updatecli
-        if: ${{ steps.get-policy-version.outputs.policy-version != steps.create-release.outputs.resolved_version }}
+        if: ${{ steps.get-expected-version.outputs.version != steps.create-release.outputs.resolved_version }}
         env:
           UPDATECLI_GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |-

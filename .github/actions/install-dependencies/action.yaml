@@ -113,3 +113,13 @@ runs:
       run: |
         wget https://github.com/tinygo-org/tinygo/releases/download/v0.39.0/tinygo_0.39.0_amd64.deb
         sudo dpkg -i tinygo_0.39.0_amd64.deb
+    - name: Install semver tool
+      shell: bash
+      run: |
+        INSTALL_DIR="$HOME"/.semver
+        mkdir -p "$INSTALL_DIR"
+        wget -O "$INSTALL_DIR"/semver https://github.com/fsaintjacques/semver-tool/raw/3.4.0/src/semver
+        chmod +x "$INSTALL_DIR"/semver
+        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+    - name: Install updatecli
+      uses: updatecli/updatecli-action@719e3592d124cbf826da704cbe557e1221dd4bba # v2.94.0
